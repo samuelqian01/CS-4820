@@ -1,0 +1,229 @@
+//preprocessing columns first, iterate through each columns, iterating fully through the rows on each column iteration.
+    for (int sc = 0; sc < n; sc++) {
+        for (int sr = 0; sr < m; sr++) { //goes up to index m - 1
+            for (int er = sr + 1; er < m+1; er++) {
+                if (er == sr + 1) { //square cases
+                    if (grid[sr][sc] == "h") {
+                        preprocess_h[sr][er][sc][sc + 1] = true;
+                    }
+                    else {
+                        preprocess_h[sr][er][sc][sc + 1] = false;
+                    }
+                    if (grid[sr][sc] == "p") {
+                        preprocess_p[sr][er][sc][sc + 1] = true;
+                    }
+                    else {
+                        preprocess_p[sr][er][sc][sc + 1] = false;          
+                    }
+                }
+                else {
+                    if (preprocess_h[sr][er - 1][sc][sc + 1] == true || grid[er - 1][sc] == "h") {
+                        preprocess_h[sr][er][sc][sc + 1] = true;
+                    }
+                    else {
+                        preprocess_h[sr][er][sc][sc + 1] = false;
+                    }
+                    if (preprocess_p[sr][er - 1][sc][sc+1] == true || grid[er - 1][sc] == "p") {
+                        preprocess_p[sr][er][sc][sc + 1] = true;
+                    }
+                    else {
+                        preprocess_p[sr][er][sc][sc + 1] = false;
+                    }
+                }
+            }
+        }
+    }
+    //Now we iterate through each row, doing each horizontal strip.
+    for (int sr = 0; sr < m; sr++) {
+        for (int sc = 0; sc < n; sc++) { //goes up to index n - 1
+            for (int ec = sc + 1; ec < n+1; ec++) {
+                if (ec != sc + 1) { //non-square cases, squares have all been processed already
+                    if (preprocess_h[sr][sr + 1][sc][ec - 1] == true || grid[sr][ec - 1] == "h") {
+                        preprocess_h[sr][sr + 1][sc][ec] = true;
+                    }
+                    else {
+                        preprocess_h[sr][sr + 1][sc][ec] = false;
+                    }
+                    if (preprocess_p[sr][sr + 1][sc][ec - 1] == true || grid[sr][ec - 1] == "p") {
+                        preprocess_p[sr][sr + 1][sc][ec] = true;
+                    }
+                    else {
+                        preprocess_p[sr][sr + 1][sc][ec] = false;
+                    }
+                }
+            }
+        }
+    }
+    //Now we use recurrence to build the columns into subrectangles
+    for (int sr = 0; sr < m; sr++) {
+        for (int er = sr + 1; er < m + 1; er++) {
+            for (int sc = 0; sc < n; sc++) {
+                for (int ec = sc + 1; ec < n + 1; ec++) {
+                    if (ec != sc + 1) { //if not one column, recurrence relation of newest column and all prior sols.
+                        if (preprocess_h[sr][er][sc][ec - 1] == true || preprocess_h[sr][er][ec - 1][ec] == true) {
+                            preprocess_h[sr][er][sc][ec] = true;
+                        }
+                        else {
+                            preprocess_h[sr][er][sc][ec] = false;
+                        }
+                        if (preprocess_p[sr][er][sc][ec - 1] == true || preprocess_p[sr][er][ec - 1][ec] == true) {
+                            preprocess_p[sr][er][sc][ec] = true;
+                        }
+                        else {
+                            preprocess_p[sr][er][sc][ec] = false;
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+
+
+
+
+
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <utility>
+using namespace std;
+int min_sol_horz(vector<vector<vector<vector<bool > > > > preprocess_h, vector<vector<vector<vector<bool > > > > preprocess_p, vector<vector<vector<vector<int > > > > dp_array, int h, int w, int r, int c);
+int min_sol_vert(vector<vector<vector<vector<bool > > > > preprocess_h, vector<vector<vector<vector<bool > > > > preprocess_p, vector<vector<vector<vector<int > > > > dp_array, int h, int w, int r, int c);
+bool cut(vector<vector<vector<vector<bool > > > > preprocess_h, vector<vector<vector<vector<bool > > > > preprocess_p, int a, int b, int c, int d);
+
+int main() {
+    std::ios::sync_with_stdio(false);
+    string input_received;
+    vector <vector <string> > parsed;
+    int count = 0;
+    int m;
+    int n;
+    while (getline(cin, input_received)) {
+        vector <string> parsed_inside;
+        stringstream ss(input_received);
+        string character;
+        while (ss >> character) {
+            parsed_inside.push_back(character);
+        }
+        if (count == 0) {
+            m = stoi(parsed_inside[0]);
+            n = stoi(parsed_inside[1]); 
+        }
+        else{
+            parsed.push_back(parsed_inside);
+        }
+        count += 1;
+    }
+    vector <vector <string> > grid (m, vector<string> (n));
+    for (int i = 0; i < parsed.size(); i++) {
+        for (int j = 0; j < parsed[i][0].length(); j++) {
+            grid[i][j] = parsed[i][0][j];
+        }
+    }
+    //stores whether there is a hazlenut/peanut or not in intervals (start row, end row, start column, end column), requires 1 extra row and column for each
+    vector<vector<vector<vector<bool > > > > preprocess_h(m + 1, vector<vector<vector<bool> > >(m + 1, vector<vector<bool> >(n+1, vector<bool>(n+1))));
+    vector<vector<vector<vector<bool > > > > preprocess_p(m + 1, vector<vector<vector<bool> > >(m + 1, vector<vector<bool> >(n+1, vector<bool>(n+1))));
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (grid[i-1][j-1] == "p") {
+                preprocess_p[i-1][i][j-1][j] = true;
+            }
+            else if (grid[i-1][j-1] == "h") {
+                preprocess_h[i-1][i][j-1][j] = true;
+            }
+        }
+    }
+    for (int i = 1; i <= n; i++) {
+        for (int j = 0; j < m - 1; j++) {
+            for (int k = j + 2; k <= m; k++) {
+                preprocess_p[j][k][i-1][i] = preprocess_p[j][k-1][i-1][i] || preprocess_p[k-1][k][i-1][i];
+                preprocess_h[j][k][i-1][i] = preprocess_h[j][k-1][i-1][i] || preprocess_h[k-1][k][i-1][i];
+            }
+        }
+    }
+    for (int i = 1; i <= m; i++) {
+        for (int j = 0; j < n-1; j++) {
+            for (int k = j + 2; k <= n; k++) {
+                preprocess_p[i-1][i][j][k] = preprocess_p[i-1][i][j][k-1] || preprocess_p[i-1][i][k-1][k];
+                preprocess_h[i-1][i][j][k] = preprocess_h[i-1][i][j][k-1] || preprocess_h[i-1][i][k-1][k];
+            }
+        }
+    }
+    for (int i = 0; i < m-1; i++) {
+        for (int j = i + 2; j <= m; j++) {
+            for (int k = 0; k < n - 1; k++) {
+                for (int l = k + 2; l <= m; l++) {
+                    preprocess_p[i][j][k][l] = preprocess_p[i][j][k][l-1] || preprocess_p[i][j][l-1][l];
+                    preprocess_h[i][j][k][l] = preprocess_h[i][j][k][l-1] || preprocess_h[i][j][l-1][l];
+                }
+            }
+        }
+    }
+    //dp table
+    vector<vector<vector<vector<int > > > > dp_array(m + 1, vector<vector<vector<int> > >(m + 1, vector<vector<int> >(n+1, vector<int>(n+1))));
+
+    //dp solution
+    for (int h = 1; h <= m; h++) { //iterate through the height
+        for (int r = 0; r<= m - h; r++) { //iterate through the rows
+            for (int w = 1; w <= n; w++) { //iterate through the width
+                for (int c = 0; c <= n - w; c++) { //iterate through all possible columns
+                    //squares taken care of using smart pre-processing
+                    //Check if can cut
+                    if (cut(preprocess_h, preprocess_p, r, h + r, c, w + c)) {
+                        int min_horz = min_sol_horz(preprocess_h, preprocess_p, dp_array, h, w, r, c);
+                        int min_vert = min_sol_vert(preprocess_h, preprocess_p, dp_array, h, w, r, c);
+                        dp_array[r][h + r][c][w + c] = min(min_horz, min_vert);
+                    }
+                }
+            }
+        }
+    }
+    cout << dp_array[0][m][0][n] << endl;
+
+    return 0;
+
+}
+bool cut(vector<vector<vector<vector<bool > > > > preprocess_h, vector<vector<vector<vector<bool > > > > preprocess_p, int a, int b, int c, int d) {
+    if (preprocess_h[a][b][c][d] && preprocess_p[a][b][c][d]) {
+        return true;
+    }
+    return false;
+}
+int min_sol_horz(vector<vector<vector<vector<bool > > > > preprocess_h, vector<vector<vector<vector<bool > > > > preprocess_p, vector<vector<vector<vector<int > > > > dp_array, int h, int w, int r, int c) {
+    int minimum = 10000000;
+    for (int a = r + 1; a <= h + r - 1; a++) {
+        int s1 = dp_array[r][a][c][w + c];
+        int s2 = dp_array[a][h + r][c][w + c];
+        int calculated = 1 + s1 + s2;
+        if (calculated < minimum) {
+            minimum = calculated;
+        }
+    }
+    return minimum;
+}
+int min_sol_vert(vector<vector<vector<vector<bool > > > > preprocess_h, vector<vector<vector<vector<bool > > > > preprocess_p, vector<vector<vector<vector<int > > > > dp_array, int h, int w, int r, int c) {
+    int minimum = 10000000;
+    for (int a = c + 1; a <= w + c - 1; a++) {
+        int s1 = dp_array[r][h + r][c][a];
+        int s2 = dp_array[r][h + r][c][w + c];
+        int calculated = 1 + s1 + s2;
+        cout << calculated << endl;
+        if (calculated < minimum) {
+            minimum = calculated;
+        }
+    }
+    return minimum;
+}
+
+
+
+            
+        
+    
+
+
+
